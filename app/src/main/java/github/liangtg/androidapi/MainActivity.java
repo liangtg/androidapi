@@ -1,7 +1,10 @@
 package github.liangtg.androidapi;
 
+import android.app.Dialog;
 import android.content.DialogInterface;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.design.widget.TextInputLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.PopupMenu;
@@ -17,9 +20,15 @@ import com.github.liangtg.base.BaseViewHolder;
 
 import java.util.ArrayList;
 
+import github.liangtg.androidapi.db.DataManager;
+import github.liangtg.androidapi.db.TitleItem;
+
 public class MainActivity extends IActivity {
     private ViewHolder viewHolder;
-    private ArrayList<String> data = new ArrayList<>();
+    private ArrayList<TitleItem> data = new ArrayList<>();
+    private int lastPosition = -1;
+    private long addPID = 0;
+    private Dialog dialog = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,9 +36,7 @@ public class MainActivity extends IActivity {
         setContentView(R.layout.activity_main);
         initAppBar();
         viewHolder = new ViewHolder(findViewById(R.id.view_holder));
-        for (int i = 0; i < 100; i++) {
-            data.add(String.format("item:%d", i));
-        }
+        startTask();
     }
 
     @Override
@@ -42,6 +49,7 @@ public class MainActivity extends IActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (R.id.add == id) {
+            addPID = 0;
             showAddTitleDialog();
             return true;
         }
@@ -49,21 +57,37 @@ public class MainActivity extends IActivity {
     }
 
     private void showAddTitleDialog() {
+        if (null != dialog) {
+            dialog.show();
+            return;
+        }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("新建标题");
         builder.setView(R.layout.dialog_add_title);
         builder.setNegativeButton(android.R.string.cancel, null);
         builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onClick(DialogInterface d, int which) {
+                TextInputLayout inputLayout = (TextInputLayout) dialog.getWindow().findViewById(R.id.input_cn);
+                String cn = inputLayout.getEditText().getText().toString();
+                inputLayout = (TextInputLayout) dialog.getWindow().findViewById(R.id.input_en);
+                String en = inputLayout.getEditText().getText().toString();
+                if (cn.length() > 0 || en.length() > 0) {
+                    DataManager.instance().addTitle(addPID, cn, en);
+                    startTask();
+                }
             }
         });
-        builder.show();
+        dialog = builder.show();
     }
 
     @Override
     protected boolean displayUp() {
         return false;
+    }
+
+    private void startTask() {
+        new DataTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     private class ViewHolder extends BaseViewHolder {
@@ -85,7 +109,7 @@ public class MainActivity extends IActivity {
 
         @Override
         public void onBindViewHolder(AdapterViewHolder holder, int position) {
-            holder.setText(R.id.title, data.get(position)).setOnClickListener(R.id.add, holder);
+            holder.setText(R.id.title, data.get(position).cnName).setOnClickListener(R.id.add, holder);
         }
 
         @Override
@@ -116,10 +140,25 @@ public class MainActivity extends IActivity {
 
         @Override
         public boolean onMenuItemClick(MenuItem item) {
-            showToast(item.getTitle().toString());
+            addPID = data.get(getAdapterPosition()).id;
+            showAddTitleDialog();
             return true;
         }
     }
 
+    private class DataTask extends AsyncTask<Void, Void, ArrayList<TitleItem>> {
+
+        @Override
+        protected ArrayList<TitleItem> doInBackground(Void... params) {
+            return DataManager.instance().getTitleList();
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<TitleItem> titleItems) {
+            data.clear();
+            data.addAll(titleItems);
+            viewHolder.recyclerView.getAdapter().notifyDataSetChanged();
+        }
+    }
 
 }

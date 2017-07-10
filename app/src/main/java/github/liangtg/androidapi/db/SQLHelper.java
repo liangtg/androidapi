@@ -10,7 +10,7 @@ import github.liangtg.androidapi.IApplication;
  */
 
 public class SQLHelper extends SQLiteOpenHelper {
-    public SQLHelper() {
+    private SQLHelper() {
         super(IApplication.context(), "api", null, 1);
     }
 
@@ -21,8 +21,8 @@ public class SQLHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(
-                "CREATE TABLE title(_id INTEGER PRIMARY KEY AUTOINCREMENT, pid INTEGER DEFAULT 0, oid INTEGER DEFAULT 0, cn_name TEXT, en_name TEXT);");
-        db.execSQL("CREATE TABLE  content  ( _id INTEGER PRIMARY KEY AUTOINCREMENT, tid INTEGER DEFAULT 0, page INTEGER DEFAULT 0, cn TEXT, en TEXT);");
+                "CREATE TABLE title(_id INTEGER PRIMARY KEY AUTOINCREMENT, pid INTEGER DEFAULT 0, page INTEGER DEFAULT 0,page_count INTEGER DEFAULT 0, cn_name TEXT, en_name TEXT);");
+        db.execSQL("CREATE TABLE  content  ( _id INTEGER PRIMARY KEY AUTOINCREMENT, tid INTEGER DEFAULT 0, cn TEXT, en TEXT);");
     }
 
     @Override
