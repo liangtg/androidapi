@@ -3,4 +3,10 @@
     <item
         android:id="@+id/add_sub"
         android:title="添加子目录" />
+    <item
+        android:id="@+id/edit_title"
+        android:title="编辑" />
+    <item
+        android:id="@+id/del_title"
+        android:title="删除" />
 </menu>

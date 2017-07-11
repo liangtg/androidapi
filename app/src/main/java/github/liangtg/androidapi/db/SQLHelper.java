@@ -21,7 +21,7 @@ public class SQLHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(
-                "CREATE TABLE title(_id INTEGER PRIMARY KEY AUTOINCREMENT, pid INTEGER DEFAULT 0, page INTEGER DEFAULT 0,page_count INTEGER DEFAULT 0, cn_name TEXT, en_name TEXT);");
+                "CREATE TABLE title(_id INTEGER PRIMARY KEY AUTOINCREMENT, pid INTEGER DEFAULT 0, page INTEGER DEFAULT 0,page_count INTEGER DEFAULT 0, depth INTEGER DEFAULT 0, cn_name TEXT, en_name TEXT);");
         db.execSQL("CREATE TABLE  content  ( _id INTEGER PRIMARY KEY AUTOINCREMENT, tid INTEGER DEFAULT 0, cn TEXT, en TEXT);");
     }
 

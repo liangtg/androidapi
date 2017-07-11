@@ -52,6 +52,7 @@ public class DataManager {
         ContentValues values = new ContentValues();
         if (null != parent) {
             item.page = parent.pageCount;
+            item.depth = parent.depth + 1;
             ContentValues update = new ContentValues();
             update.put("page_count", parent.pageCount + 1);
             writableDatabase.update(TABLE_TITLE, update, "_id=?", new String[]{String.valueOf(pid)});
@@ -60,6 +61,7 @@ public class DataManager {
         item.enName = en;
         values.put("pid", pid);
         values.put("page", item.page);
+        values.put("depth", item.depth);
         values.put("cn_name", cn);
         values.put("en_name", en);
         item.id = writableDatabase.insert(TABLE_TITLE, null, values);
@@ -101,6 +103,37 @@ public class DataManager {
         return result;
     }
 
+    public void editTitle(long id, String cn, String en) {
+        SQLiteDatabase db = SQLHelper.instance().getWritableDatabase();
+        db.beginTransaction();
+        ContentValues values = new ContentValues();
+        values.put("cn_name", cn);
+        values.put("en_name", en);
+        db.update(TABLE_TITLE, values, "_id=?", new String[]{String.valueOf(id)});
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
+    public void deleteTitle(long id) {
+        SQLiteDatabase db = SQLHelper.instance().getWritableDatabase();
+        db.beginTransaction();
+        Cursor cursor = db.query(TABLE_TITLE, new String[]{"pid"}, "_id=?", new String[]{String.valueOf(id)}, null, null, null);
+        if (cursor.moveToFirst()) {
+            db.delete(TABLE_TITLE, "_id=?", new String[]{String.valueOf(id)});
+            int pid = cursor.getInt(0);
+            cursor.close();
+            cursor = db.query(TABLE_TITLE, new String[]{"page_count"}, "_id=?", new String[]{String.valueOf(pid)}, null, null, null);
+            if (cursor.moveToFirst()) {
+                ContentValues values = new ContentValues();
+                values.put("page_count", cursor.getInt(0) - 1);
+                db.update(TABLE_TITLE, values, "_id=?", new String[]{String.valueOf(pid)});
+            }
+        }
+        cursor.close();
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
     @NonNull
     private TitleItem cursorToTItle(Cursor cursor) {
         TitleItem item = new TitleItem();
@@ -108,8 +141,9 @@ public class DataManager {
         item.pid = cursor.getInt(1);
         item.page = cursor.getInt(2);
         item.pageCount = cursor.getInt(3);
-        item.cnName = cursor.getString(4);
-        item.enName = cursor.getString(5);
+        item.depth = cursor.getInt(4);
+        item.cnName = cursor.getString(5);
+        item.enName = cursor.getString(6);
         return item;
     }
 
