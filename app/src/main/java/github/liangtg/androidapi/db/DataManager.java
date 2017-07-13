@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.support.annotation.NonNull;
+import android.text.TextUtils;
 
 import java.util.ArrayList;
 
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 public class DataManager {
 
     private final String TABLE_TITLE = "title";
+    private final String TABLE_CONTENT = "content";
 
     public static final DataManager instance() {
         return DataManagerHolder.instance;
@@ -144,6 +146,48 @@ public class DataManager {
         item.depth = cursor.getInt(4);
         item.cnName = cursor.getString(5);
         item.enName = cursor.getString(6);
+        return item;
+    }
+
+    public ContentItem getContent(long tid) {
+        ContentItem result = new ContentItem();
+        Cursor cursor = SQLHelper.instance().getReadableDatabase().query(TABLE_CONTENT,
+                null,
+                "tid=?",
+                new String[]{String.valueOf(tid)},
+                null,
+                null,
+                null);
+        if (cursor.moveToFirst()) {
+            result = cursorToContent(cursor);
+        }
+        cursor.close();
+        return result;
+    }
+
+    public void editContent(long id, String cn, String en) {
+        SQLiteDatabase db = SQLHelper.instance().getWritableDatabase();
+        db.beginTransaction();
+        if (!TextUtils.isEmpty(cn) || !TextUtils.isEmpty(en)) {
+            ContentValues values = new ContentValues();
+            values.put("cn", cn);
+            values.put("en", en);
+            int row = db.update(TABLE_CONTENT, values, "tid=?", new String[]{String.valueOf(id)});
+            if (row == 0) {
+                values.put("tid", id);
+                db.insert(TABLE_CONTENT, null, values);
+            }
+        }
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
+    private ContentItem cursorToContent(Cursor cursor) {
+        ContentItem item = new ContentItem();
+        item.id = cursor.getLong(0);
+        item.tid = cursor.getLong(1);
+        item.cn = cursor.getString(2);
+        item.en = cursor.getString(3);
         return item;
     }
 

@@ -199,7 +199,7 @@ public class MainActivity extends IActivity {
                 lastPosition = getAdapterPosition();
                 viewHolder.recyclerView.getAdapter().notifyItemChanged(lastPosition);
             } else if (R.id.item_view_holder == id) {
-                gotoActivity(DetailActivity.class);
+                DetailActivity.gotoDetail(getAdapterPosition());
             }
         }
 

@@ -1,5 +1,7 @@
 package github.liangtg.androidapi;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -10,6 +12,8 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
@@ -18,23 +22,53 @@ import android.webkit.WebView;
 
 import com.github.liangtg.base.BaseRecyclerViewHolder;
 import com.github.liangtg.base.BaseViewHolder;
+import com.google.gson.Gson;
 
 import java.util.ArrayList;
 
+import github.liangtg.androidapi.db.ContentItem;
 import github.liangtg.androidapi.db.DataManager;
 import github.liangtg.androidapi.db.TitleItem;
 
 public class DetailActivity extends IActivity {
+    private static final int REQUEST_EDIT = 0xFF;
+    private static final String url = "file:///android_asset/html/empty.html";
     private ViewHolder viewHolder;
     private ArrayList<TitleItem> menuList = new ArrayList<>();
     private MenuAdapter menuAdapter = new MenuAdapter();
+    private int lastPosition = 0;
+    private ContentItem curContent;
+
+    public static void gotoDetail(int position) {
+        Intent intent = new Intent(IApplication.context(), DetailActivity.class);
+        intent.putExtra(Intent.EXTRA_INDEX, position);
+        intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        IApplication.context().startActivity(intent);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
+        lastPosition = getIntent().getIntExtra(Intent.EXTRA_INDEX, 0);
         viewHolder = new ViewHolder(findViewById(R.id.view_holder));
         new DataTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.detail, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (R.id.edit == id) {
+            toEdit();
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -46,9 +80,44 @@ public class DetailActivity extends IActivity {
         }
     }
 
+    private void toEdit() {
+        Intent intent = new Intent(IApplication.context(), EditDetailActivity.class);
+        intent.setData(Uri.parse(new Gson().toJson(curContent)));
+        startActivityForResult(intent, REQUEST_EDIT);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (RESULT_OK == resultCode && requestCode == REQUEST_EDIT) {
+            showItem(menuList.get(lastPosition));
+        }
+    }
+
+    private void showItem(TitleItem c) {
+        viewHolder.toolbar.setTitle(String.format("%s/%s", c.cnName, c.enName));
+        ContentItem content = DataManager.instance().getContent(c.id);
+        curContent = content;
+        if (content.tid == -1) {
+            content.tid = c.id;
+            toEdit();
+        }
+        if (TextUtils.isEmpty(content.cn)) {
+            viewHolder.cnWeb.loadUrl(url);
+        } else {
+            viewHolder.cnWeb.loadDataWithBaseURL(null, content.cn, null, null, null);
+        }
+        if (TextUtils.isEmpty(content.en)) {
+            viewHolder.enWeb.loadUrl(url);
+        } else {
+            viewHolder.enWeb.loadDataWithBaseURL(null, content.en, null, null, null);
+        }
+    }
+
     private class ViewHolder extends BaseViewHolder implements NavigationView.OnNavigationItemSelectedListener {
         private final DrawerLayout drawer;
         private final ConstraintLayout constraintLayout;
+        private Toolbar toolbar;
         private NavigationView navigationView;
         private WebView cnWeb, enWeb;
         private View handler, handlerLine;
@@ -56,6 +125,8 @@ public class DetailActivity extends IActivity {
 
         public ViewHolder(View view) {
             super(view);
+            toolbar = get(R.id.toolbar);
+            setSupportActionBar(toolbar);
             handler = get(R.id.handler);
             handler.setOnTouchListener(new View.OnTouchListener() {
                 float dy = 0;
@@ -67,7 +138,6 @@ public class DetailActivity extends IActivity {
                         dy = event.getRawY();
                         constraintLayout.getLocationOnScreen(out);
                     } else {
-                        int cy = constraintLayout.getHeight() / 2;
                         float bias = (event.getRawY() - out[1] * 1f) / constraintLayout.getHeight();
                         bias = Math.max(0.25f, Math.min(0.75f, bias));
                         constraintSet.setVerticalBias(R.id.handler_line, bias);
@@ -100,7 +170,9 @@ public class DetailActivity extends IActivity {
         @Override
         public boolean onNavigationItemSelected(@NonNull MenuItem item) {
             viewHolder.drawer.closeDrawers();
-            return false;
+            lastPosition = item.getItemId();
+            showItem(menuList.get(item.getItemId()));
+            return true;
         }
     }
 
@@ -126,7 +198,6 @@ public class DetailActivity extends IActivity {
         }
     }
 
-
     private class DataTask extends AsyncTask<Void, Void, ArrayList<TitleItem>> {
 
         @Override
@@ -137,6 +208,7 @@ public class DetailActivity extends IActivity {
         @Override
         protected void onPostExecute(ArrayList<TitleItem> titleItems) {
             menuList.addAll(titleItems);
+            showItem(menuList.get(lastPosition));
             viewHolder.navigationView.getMenu().clear();
             for (int i = 0; i < menuList.size(); i++) {
                 viewHolder.navigationView.getMenu().add(0, i, i, menuList.get(i).cnName);
